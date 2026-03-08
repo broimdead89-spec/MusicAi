@@ -749,13 +749,14 @@ button, input, textarea { font-family: inherit; }
   border-top: 1px solid var(--border-subtle);
   display: none; align-items: center; gap: 20px;
   padding: 0 24px;
+  overflow: hidden;
 }
 #player.visible { display: flex; }
 
 /* Vinyl */
 .vinyl-wrap {
   position: relative; width: 54px; height: 54px;
-  flex-shrink: 0;
+  flex-shrink: 0; overflow: hidden; border-radius: 50%;
 }
 .vinyl-disc {
   position: absolute; inset: 0;
@@ -798,8 +799,12 @@ button, input, textarea { font-family: inherit; }
 }
 
 /* Controls */
-.player-center { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 480px; }
+.player-center { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 580px; margin: 0 auto; }
 .ctrl-row { display: flex; align-items: center; gap: 16px; }
+.repeat-btn { font-size: 18px !important; color: var(--text-dim) !important; transition: color .2s, transform .2s !important; }
+.repeat-btn.active { color: var(--accent-coral) !important; }
+.repeat-btn.active-one { color: var(--accent-coral) !important; }
+.repeat-btn.active-one::after { content: '1'; font-size: 8px; position: absolute; bottom: 2px; right: 2px; font-family: 'DM Mono', monospace; background: var(--accent-coral); color: #000; border-radius: 3px; padding: 0 2px; line-height: 1.2; }
 .ctrl-btn {
   background: none; border: none; cursor: pointer;
   color: var(--text-secondary); font-size: 16px;
@@ -876,8 +881,42 @@ button, input, textarea { font-family: inherit; }
   animation: wfAnim .4s ease infinite alternate;
 }
 
-/* Hidden YT player */
-#yt-frame { position: fixed; bottom:0; right:0; width:1px; height:1px; opacity:0; pointer-events:none; }
+/* Mini YouTube Popup */
+#yt-popup {
+  position: fixed; bottom: 90px; right: 20px; z-index: 999;
+  width: 320px; height: 200px;
+  background: #0e0e1a;
+  border-radius: 14px;
+  border: 1px solid rgba(255,61,90,0.3);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05);
+  overflow: hidden;
+  display: none;
+  flex-direction: column;
+}
+#yt-popup.visible { display: flex; }
+#yt-popup-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255,61,90,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  cursor: move; user-select: none;
+}
+#yt-popup-title {
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
+  color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 230px;
+}
+#yt-popup-close {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-secondary); font-size: 16px; line-height: 1;
+  padding: 0 2px; transition: color .2s;
+}
+#yt-popup-close:hover { color: var(--accent-coral); }
+#yt-popup iframe {
+  width: 100%; flex: 1; border: none; display: block;
+}
+
+/* Vinyl */
 
 /* ═══════════════════════════════════════
    UTILITIES
@@ -1020,6 +1059,12 @@ button, input, textarea { font-family: inherit; }
       <div class="nav-group-label">Library</div>
       <button class="nav-link" onclick="showPage('mymusic',this)">
         <span class="nav-icon">❤️</span><span>My Music</span>
+      </button>
+      <button class="nav-link" onclick="showPage('playlists',this)">
+        <span class="nav-icon">📂</span><span>Playlists</span>
+      </button>
+      <button class="nav-link" onclick="showPage('radio',this)">
+        <span class="nav-icon">📻</span><span>Radio</span>
       </button>
       <div class="nav-group-label">AI</div>
       <button class="nav-link" onclick="showPage('agent',this)">
@@ -1192,6 +1237,44 @@ button, input, textarea { font-family: inherit; }
         </div>
       </div>
 
+      <!-- PLAYLISTS PAGE -->
+      <div id="page-playlists" class="page">
+        <div class="page-hero">
+          <h1>My <em>playlists.</em></h1>
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:24px;align-items:center">
+          <input type="text" id="new-pl-name" class="settings-input" placeholder="New playlist name..." style="max-width:260px">
+          <button class="btn-pill primary" onclick="createPlaylist()">+ Create</button>
+        </div>
+        <div id="playlists-list"></div>
+        <div id="pl-tracks-panel" style="margin-top:32px;display:none">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <button class="ctrl-btn" onclick="document.getElementById('pl-tracks-panel').style.display='none'" style="font-size:18px">←</button>
+            <h2 id="pl-tracks-title" style="font-family:Syne,sans-serif;font-size:20px;font-weight:700"></h2>
+            <button class="btn-pill" style="background:rgba(255,61,90,0.1);border:1px solid rgba(255,61,90,0.3);color:var(--accent-coral);font-size:11px;padding:4px 10px;cursor:pointer" onclick="playPlaylist()">▶ Play all</button>
+          </div>
+          <div id="pl-tracks-list"></div>
+        </div>
+      </div>
+
+      <!-- RADIO PAGE -->
+      <div id="page-radio" class="page">
+        <div class="page-hero">
+          <h1>Online <em>radio.</em></h1>
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap">
+          <input type="text" id="radio-search-q" class="settings-input" placeholder="Search radio station..." style="max-width:300px" onkeydown="if(event.key==='Enter')searchRadio()">
+          <button class="btn-pill primary" onclick="searchRadio()">Search</button>
+        </div>
+        <div id="radio-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px"></div>
+        <div id="radio-now" style="display:none;margin-top:24px;padding:16px;background:rgba(255,61,90,0.06);border:1px solid rgba(255,61,90,0.2);border-radius:14px">
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;font-family:DM Mono,monospace">NOW PLAYING</div>
+          <div id="radio-now-name" style="font-family:Syne,sans-serif;font-size:16px;font-weight:700"></div>
+          <div id="radio-now-country" style="font-size:11px;color:var(--text-secondary);margin-top:2px"></div>
+          <button class="btn-pill" style="margin-top:10px;background:rgba(255,61,90,0.15);border:1px solid rgba(255,61,90,0.3);color:var(--accent-coral);cursor:pointer" onclick="stopRadio()">■ Stop</button>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /app -->
@@ -1209,9 +1292,11 @@ button, input, textarea { font-family: inherit; }
   </div>
   <div class="player-center">
     <div class="ctrl-row">
+      <button class="ctrl-btn repeat-btn" id="repeat-btn" onclick="cycleRepeat()" title="Repeat">⟳</button>
       <button class="ctrl-btn" onclick="prevTrack()">⏮</button>
       <button class="play-btn-main" id="main-play-btn" onclick="togglePlay()">▶</button>
       <button class="ctrl-btn" onclick="nextTrack()">⏭</button>
+      <button class="ctrl-btn" onclick="openYTPopup(currentTrack?.id, currentTrack?.title)" title="Open video" style="font-size:13px">⧉</button>
     </div>
     <div class="progress-row">
       <span class="prog-time" id="cur-time">0:00</span>
@@ -1230,8 +1315,14 @@ button, input, textarea { font-family: inherit; }
   </div>
 </div>
 
-<!-- Hidden YouTube player -->
-<div id="yt-frame"></div>
+<!-- Mini YouTube Popup -->
+<div id="yt-popup">
+  <div id="yt-popup-header">
+    <span id="yt-popup-title">Now Playing</span>
+    <button id="yt-popup-close" onclick="closeYTPopup()" title="Close">✕</button>
+  </div>
+  <iframe id="yt-frame" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -1240,9 +1331,8 @@ button, input, textarea { font-family: inherit; }
 // ════════════════════════════════════════
 const LIKED = new Set();
 let likesData = [];
-let ytPlayer = null;
-let ytReady = false;
 let currentTrack = null;
+let repeatMode = 0; // 0=off, 1=all, 2=one
 let queue = [];
 let queueIdx = -1;
 let isPlaying = false;
@@ -1253,41 +1343,55 @@ let wfBars = [];
 let wfRAF = null;
 
 // ════════════════════════════════════════
-// YOUTUBE IFRAME API
+// MINI YOUTUBE POPUP
 // ════════════════════════════════════════
-window.onYouTubeIframeAPIReady = () => {
-  ytPlayer = new YT.Player('yt-frame', {
-    height: '1', width: '1',
-    playerVars: { autoplay: 1, controls: 0, playsinline: 1 },
-    events: {
-      onReady: () => { ytReady = true; setVolume(document.getElementById('vol-slider').value); },
-      onStateChange: onYTState,
-    }
-  });
-};
-(function loadYT() {
-  const s = document.createElement('script');
-  s.src = 'https://www.youtube.com/iframe_api';
-  document.head.appendChild(s);
-})();
-
-function onYTState(e) {
-  if (e.data === YT.PlayerState.PLAYING) {
-    isPlaying = true;
-    document.getElementById('main-play-btn').textContent = '⏸';
-    document.getElementById('vinyl-disc').classList.add('spinning');
-    document.getElementById('main-play-btn').classList.add('pulsing');
-    startProgress();
-    startWaveform();
-  } else {
-    isPlaying = false;
-    document.getElementById('main-play-btn').textContent = '▶';
-    document.getElementById('vinyl-disc').classList.remove('spinning');
-    document.getElementById('main-play-btn').classList.remove('pulsing');
-    stopWaveform();
-    if (e.data === YT.PlayerState.ENDED) nextTrack();
-  }
+function openYTPopup(videoId, title) {
+  const popup = document.getElementById('yt-popup');
+  const frame = document.getElementById('yt-frame');
+  document.getElementById('yt-popup-title').textContent = title || 'Now Playing';
+  frame.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1`;
+  popup.classList.add('visible');
+  isPlaying = true;
+  document.getElementById('main-play-btn').textContent = '⏸';
+  document.getElementById('vinyl-disc').classList.add('spinning');
+  document.getElementById('main-play-btn').classList.add('pulsing');
+  startWaveform();
 }
+
+function closeYTPopup() {
+  const frame = document.getElementById('yt-frame');
+  frame.src = '';
+  document.getElementById('yt-popup').classList.remove('visible');
+  isPlaying = false;
+  document.getElementById('main-play-btn').textContent = '▶';
+  document.getElementById('vinyl-disc').classList.remove('spinning');
+  document.getElementById('main-play-btn').classList.remove('pulsing');
+  stopWaveform();
+}
+
+// Draggable popup
+(function() {
+  let dragging = false, ox = 0, oy = 0;
+  document.addEventListener('DOMContentLoaded', () => {
+    const hdr = document.getElementById('yt-popup-header');
+    const popup = document.getElementById('yt-popup');
+    if (!hdr) return;
+    hdr.addEventListener('mousedown', e => {
+      dragging = true;
+      const r = popup.getBoundingClientRect();
+      ox = e.clientX - r.left; oy = e.clientY - r.top;
+      popup.style.transition = 'none';
+    });
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const x = Math.max(0, Math.min(window.innerWidth - popup.offsetWidth, e.clientX - ox));
+      const y = Math.max(0, Math.min(window.innerHeight - popup.offsetHeight, e.clientY - oy));
+      popup.style.right = 'auto'; popup.style.bottom = 'auto';
+      popup.style.left = x + 'px'; popup.style.top = y + 'px';
+    });
+    document.addEventListener('mouseup', () => { dragging = false; });
+  });
+})();
 
 // ════════════════════════════════════════
 // PLAYBACK
@@ -1321,31 +1425,27 @@ function playTrack(track, trackList) {
   document.querySelectorAll('.track-row').forEach(r => r.classList.remove('playing'));
   document.querySelectorAll(`.track-row[data-id="${track.id}"]`).forEach(r => r.classList.add('playing'));
 
-  // Play via YT
-  if (ytReady && ytPlayer?.loadVideoById) {
-    ytPlayer.loadVideoById({ videoId: track.id, startSeconds: 0 });
-  } else {
-    const tryPlay = (attempts) => {
-      if (ytReady && ytPlayer?.loadVideoById) {
-        ytPlayer.loadVideoById({ videoId: track.id, startSeconds: 0 });
-      } else if (attempts > 0) {
-        setTimeout(() => tryPlay(attempts - 1), 500);
-      }
-    };
-    setTimeout(() => tryPlay(10), 500);
-  }
+  // Open mini YouTube popup
+  openYTPopup(track.id, track.title);
 
   // Log history
   fetch('/api/history/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({track}) }).catch(() => {});
 }
 
 function togglePlay() {
-  if (!ytPlayer || !currentTrack) return;
-  isPlaying ? ytPlayer.pauseVideo() : ytPlayer.playVideo();
+  if (!currentTrack) return;
+  const popup = document.getElementById('yt-popup');
+  if (!popup.classList.contains('visible')) {
+    openYTPopup(currentTrack.id, currentTrack.title);
+  } else {
+    closeYTPopup();
+  }
 }
 function nextTrack() {
   if (!queue.length) return;
+  if (repeatMode === 2) { playTrack(queue[queueIdx], null); return; }
   queueIdx = (queueIdx + 1) % queue.length;
+  if (queueIdx === 0 && repeatMode === 0) { closeYTPopup(); return; }
   playTrack(queue[queueIdx], null);
 }
 function prevTrack() {
@@ -1353,20 +1453,34 @@ function prevTrack() {
   queueIdx = (queueIdx - 1 + queue.length) % queue.length;
   playTrack(queue[queueIdx], null);
 }
-function setVolume(v) { if (ytReady && ytPlayer?.setVolume) ytPlayer.setVolume(parseInt(v)); }
-function seekTo(e) {
-  if (!ytReady || !currentTrack) return;
-  const bar = document.getElementById('prog-bar');
-  const pct = (e.clientX - bar.getBoundingClientRect().left) / bar.offsetWidth;
-  ytPlayer.seekTo((ytPlayer.getDuration() || 0) * pct, true);
+function cycleRepeat() {
+  repeatMode = (repeatMode + 1) % 3;
+  const btn = document.getElementById('repeat-btn');
+  btn.classList.remove('active', 'active-one');
+  if (repeatMode === 1) { btn.classList.add('active'); btn.title = 'Repeat all'; }
+  else if (repeatMode === 2) { btn.classList.add('active', 'active-one'); btn.title = 'Repeat one'; btn.textContent = '⟳'; }
+  else { btn.title = 'Repeat off'; }
+  btn.style.position = 'relative';
+  // Show "1" badge
+  const badge = btn.querySelector('.repeat-badge');
+  if (badge) badge.remove();
+  if (repeatMode === 2) {
+    const b = document.createElement('span');
+    b.className = 'repeat-badge';
+    b.textContent = '1';
+    b.style.cssText = 'position:absolute;bottom:0;right:-2px;font-size:8px;background:var(--accent-coral);color:#000;border-radius:3px;padding:0 2px;line-height:1.3;font-family:DM Mono,monospace;font-weight:700';
+    btn.appendChild(b);
+  }
 }
+function setVolume(v) { /* volume controlled in YouTube popup */ }
+function seekTo(e) { /* seek not available in embed mode */ }
 
 function startProgress() {
   clearInterval(progInterval);
   progInterval = setInterval(() => {
-    if (!ytReady || !isPlaying) return;
-    const cur = ytPlayer.getCurrentTime() || 0;
-    const dur = ytPlayer.getDuration() || 0;
+    if (!isPlaying) return;
+    const cur = 0;
+    const dur = 0;
     if (dur > 0) {
       document.getElementById('prog-fill').style.width = (cur / dur * 100) + '%';
       document.getElementById('cur-time').textContent = fmt(cur);
@@ -1489,6 +1603,7 @@ function trackRowHTML(t, idx, list) {
     <div class="track-actions" onclick="event.stopPropagation()">
       <button class="icon-btn ${liked?'liked':''}" id="lk-${t.id}"
         onclick="toggleLike(${tj},this)">${liked?'❤️':'🤍'}</button>
+      <button class="icon-btn" title="Add to playlist" onclick="addToPlaylist(${tj})" style="font-size:13px">+</button>
       <a href="https://music.youtube.com/watch?v=${t.id}" target="_blank" onclick="event.stopPropagation()">
         <button class="icon-btn" title="Open in YT Music" style="font-size:14px">↗</button>
       </a>
@@ -1778,10 +1893,165 @@ async function loadSettings() {
 }
 
 // ════════════════════════════════════════
+// PLAYLISTS
+// ════════════════════════════════════════
+let playlists = JSON.parse(localStorage.getItem('wf_playlists') || '[]');
+
+function savePlaylists() { localStorage.setItem('wf_playlists', JSON.stringify(playlists)); }
+
+function renderPlaylists() {
+  const el = document.getElementById('playlists-list');
+  if (!playlists.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">No playlists yet. Create one above.</div></div>';
+    return;
+  }
+  el.innerHTML = playlists.map((pl, i) => `
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:12px;margin-bottom:10px;cursor:pointer" onclick="openPlaylist(${i})">
+      <div style="width:44px;height:44px;background:linear-gradient(135deg,rgba(255,61,90,0.3),rgba(123,47,255,0.3));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📂</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700">${esc(pl.name)}</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${pl.tracks.length} tracks</div>
+      </div>
+      <button class="btn-pill" style="background:rgba(255,61,90,0.1);border:1px solid rgba(255,61,90,0.2);color:var(--accent-coral);font-size:11px;padding:4px 10px;cursor:pointer" onclick="event.stopPropagation();deletePlaylist(${i})">Delete</button>
+    </div>`).join('');
+}
+
+function createPlaylist() {
+  const inp = document.getElementById('new-pl-name');
+  const name = inp.value.trim();
+  if (!name) return;
+  playlists.push({ name, tracks: [] });
+  savePlaylists(); renderPlaylists();
+  inp.value = '';
+  showToast(`Playlist "${name}" created`);
+}
+
+function deletePlaylist(i) {
+  playlists.splice(i, 1);
+  savePlaylists(); renderPlaylists();
+}
+
+function openPlaylist(i) {
+  const pl = playlists[i];
+  document.getElementById('pl-tracks-title').textContent = pl.name;
+  document.getElementById('pl-tracks-panel').style.display = 'block';
+  document.getElementById('pl-tracks-panel').dataset.idx = i;
+  const el = document.getElementById('pl-tracks-list');
+  if (!pl.tracks.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-text">No tracks yet. Like tracks and add them here.</div></div>';
+    return;
+  }
+  el.innerHTML = pl.tracks.map((t, ti) => `
+    <div class="track-row" data-id="${t.id}" onclick="playTrack(${JSON.stringify(t).replace(/"/g,'&quot;')}, ${JSON.stringify(pl.tracks).replace(/"/g,'&quot;')})">
+      <div class="track-idx">${String(ti+1).padStart(2,'0')}</div>
+      <div class="track-eq-mini"><span></span><span></span><span></span></div>
+      ${t.thumb ? `<div class="track-art-wrap"><img class="track-art" src="${t.thumb}" alt=""><div class="track-art-overlay">▶</div></div>` : '<div class="track-art-placeholder">🎵</div>'}
+      <div class="track-meta-wrap">
+        <div class="track-title">${esc(t.title)}</div>
+        <div class="track-meta">${esc(t.artist)}</div>
+      </div>
+      <button class="ctrl-btn" style="margin-left:auto;font-size:14px;color:var(--accent-coral)" onclick="event.stopPropagation();removeFromPlaylist(${i},${ti})">✕</button>
+    </div>`).join('');
+}
+
+function playPlaylist() {
+  const i = parseInt(document.getElementById('pl-tracks-panel').dataset.idx);
+  const pl = playlists[i];
+  if (pl.tracks.length) playTrack(pl.tracks[0], pl.tracks);
+}
+
+function removeFromPlaylist(pi, ti) {
+  playlists[pi].tracks.splice(ti, 1);
+  savePlaylists(); openPlaylist(pi);
+}
+
+function addToPlaylist(track) {
+  if (!playlists.length) { showToast('Create a playlist first'); showPage('playlists', document.querySelector('[onclick*="playlists"]')); return; }
+  if (playlists.length === 1) { _addToPlaylistIdx(0, track); return; }
+  // Show quick picker
+  const picker = document.createElement('div');
+  picker.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:16px;padding:20px;z-index:9999;min-width:240px;box-shadow:0 20px 60px rgba(0,0,0,0.8)';
+  picker.innerHTML = `<div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;margin-bottom:14px">Add to playlist</div>
+    ${playlists.map((pl,i) => `<div onclick="this.closest('[style]').remove();_addToPlaylistIdx(${i},${JSON.stringify(track).replace(/"/g,'&quot;')})" style="padding:10px 12px;cursor:pointer;border-radius:8px;font-size:13px;transition:background .15s" onmouseover="this.style.background='rgba(255,61,90,0.08)'" onmouseout="this.style.background=''">${esc(pl.name)} <span style="color:var(--text-dim);font-size:11px">${pl.tracks.length} tracks</span></div>`).join('')}
+    <button onclick="this.closest('[style]').remove()" style="margin-top:10px;background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:12px">Cancel</button>`;
+  document.body.appendChild(picker);
+}
+
+function _addToPlaylistIdx(i, track) {
+  if (!playlists[i].tracks.find(t => t.id === track.id)) {
+    playlists[i].tracks.push(track);
+    savePlaylists();
+    showToast(`Added to "${playlists[i].name}"`);
+  } else {
+    showToast('Already in playlist');
+  }
+}
+
+// ════════════════════════════════════════
+// RADIO
+// ════════════════════════════════════════
+let radioAudio = null;
+
+const RADIO_DEFAULT = [
+  { name: 'Lofi Girl', url: 'https://play.streamafrica.net/lofiradio', tags: 'lofi chill', country: 'Online' },
+  { name: 'Radio Paradise', url: 'http://stream.radioparadise.com/mp3-128', tags: 'rock mix', country: 'USA' },
+  { name: 'SomaFM Groove Salad', url: 'https://ice4.somafm.com/groovesalad-128-mp3', tags: 'ambient electronica', country: 'USA' },
+  { name: 'SomaFM Indie Pop Rocks', url: 'https://ice4.somafm.com/indiepop-128-mp3', tags: 'indie pop', country: 'USA' },
+  { name: 'SomaFM Drone Zone', url: 'https://ice4.somafm.com/dronezone-128-mp3', tags: 'ambient drone', country: 'USA' },
+  { name: 'Jazz24', url: 'https://live.wostreaming.net/direct/ppm-jazz24mp3-ibc1', tags: 'jazz', country: 'USA' },
+  { name: 'KEXP', url: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3', tags: 'indie alternative', country: 'USA' },
+  { name: 'NRJ France', url: 'https://scdn.nrjaudio.fm/adwz1/fr/30001/mp3_128.mp3', tags: 'pop hits', country: 'France' },
+];
+
+async function searchRadio() {
+  const q = document.getElementById('radio-search-q').value.trim();
+  const grid = document.getElementById('radio-grid');
+  grid.innerHTML = '<div style="color:var(--text-secondary);font-size:13px;padding:20px">Searching...</div>';
+  let stations = [];
+  if (!q) {
+    stations = RADIO_DEFAULT;
+  } else {
+    try {
+      const r = await fetch(`https://de1.api.radio-browser.info/json/stations/search?name=${encodeURIComponent(q)}&limit=20&hidebroken=true&order=votes&reverse=true`);
+      const data = await r.json();
+      stations = data.map(s => ({ name: s.name, url: s.url_resolved || s.url, tags: s.tags, country: s.country })).filter(s => s.url);
+    } catch(e) {
+      stations = RADIO_DEFAULT.filter(s => s.name.toLowerCase().includes(q.toLowerCase()) || s.tags.includes(q.toLowerCase()));
+    }
+  }
+  if (!stations.length) { grid.innerHTML = '<div class="empty-state"><div class="empty-text">No stations found</div></div>'; return; }
+  grid.innerHTML = stations.map((s, i) => `
+    <div onclick="playRadio(${JSON.stringify(s).replace(/"/g,'&quot;')})" style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:14px;padding:16px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden" onmouseover="this.style.borderColor='rgba(255,61,90,0.4)'" onmouseout="this.style.borderColor='var(--border-subtle)'">
+      <div style="width:40px;height:40px;background:linear-gradient(135deg,rgba(0,212,255,0.2),rgba(123,47,255,0.2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px">📻</div>
+      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.name)}</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:3px;font-family:DM Mono,monospace">${esc(s.country || '')} ${s.tags ? '· ' + esc(s.tags.split(',')[0]) : ''}</div>
+      <div style="position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:#555" class="radio-dot-${i}"></div>
+    </div>`).join('');
+}
+
+function playRadio(station) {
+  stopRadio();
+  radioAudio = new Audio(station.url);
+  radioAudio.play().then(() => {
+    document.getElementById('radio-now').style.display = 'block';
+    document.getElementById('radio-now-name').textContent = station.name;
+    document.getElementById('radio-now-country').textContent = station.country + (station.tags ? ' · ' + station.tags.split(',')[0] : '');
+    showToast('Playing: ' + station.name);
+  }).catch(() => showToast('Cannot play this station'));
+}
+
+function stopRadio() {
+  if (radioAudio) { radioAudio.pause(); radioAudio = null; }
+  document.getElementById('radio-now').style.display = 'none';
+}
+
+// ════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════
 loadLikes();
 loadSettings();
+renderPlaylists();
+searchRadio();
 </script>
 </body>
 </html>
