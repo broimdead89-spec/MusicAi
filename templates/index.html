@@ -877,7 +877,7 @@ button, input, textarea { font-family: inherit; }
 }
 
 /* Hidden YT player */
-#yt-frame { position: absolute; left:-9999px; top:-9999px; width:1px; height:1px; }
+#yt-frame { position: fixed; bottom:0; right:0; width:1px; height:1px; opacity:0; pointer-events:none; }
 
 /* ═══════════════════════════════════════
    UTILITIES
@@ -1258,7 +1258,7 @@ let wfRAF = null;
 window.onYouTubeIframeAPIReady = () => {
   ytPlayer = new YT.Player('yt-frame', {
     height: '1', width: '1',
-    playerVars: { autoplay: 0, controls: 0, playsinline: 1, origin: location.origin },
+    playerVars: { autoplay: 1, controls: 0, playsinline: 1 },
     events: {
       onReady: () => { ytReady = true; setVolume(document.getElementById('vol-slider').value); },
       onStateChange: onYTState,
@@ -1323,9 +1323,16 @@ function playTrack(track, trackList) {
 
   // Play via YT
   if (ytReady && ytPlayer?.loadVideoById) {
-    ytPlayer.loadVideoById(track.id);
+    ytPlayer.loadVideoById({ videoId: track.id, startSeconds: 0 });
   } else {
-    setTimeout(() => { if (ytReady && ytPlayer?.loadVideoById) ytPlayer.loadVideoById(track.id); }, 1000);
+    const tryPlay = (attempts) => {
+      if (ytReady && ytPlayer?.loadVideoById) {
+        ytPlayer.loadVideoById({ videoId: track.id, startSeconds: 0 });
+      } else if (attempts > 0) {
+        setTimeout(() => tryPlay(attempts - 1), 500);
+      }
+    };
+    setTimeout(() => tryPlay(10), 500);
   }
 
   // Log history
