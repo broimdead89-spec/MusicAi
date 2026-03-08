@@ -7,6 +7,7 @@ python main.py
 import json
 import os
 import re
+import tempfile
 from datetime import datetime
 
 import uvicorn
@@ -17,8 +18,10 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from ytmusicapi import YTMusic
 
-DATA_FILE = "userdata.json"
-SETTINGS_FILE = "settings.json"
+# На хостинге используем /tmp для записи
+_TMP = tempfile.gettempdir()
+DATA_FILE = os.path.join(_TMP, "waveflow_userdata.json")
+SETTINGS_FILE = os.path.join(_TMP, "waveflow_settings.json")
 
 app = FastAPI(title="WaveFlow")
 templates = Jinja2Templates(directory="templates")
