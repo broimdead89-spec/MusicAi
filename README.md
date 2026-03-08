@@ -1,3 +1,13 @@
+---
+title: WaveFlow
+emoji: 🎵
+colorFrom: red
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 🎵 WaveFlow — MusicAI
 
 <div align="center">
